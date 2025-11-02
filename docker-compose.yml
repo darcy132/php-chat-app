@@ -1,0 +1,56 @@
+version: '3.8'
+
+services:
+  web:
+    image: darcy132/php-chat-app
+    # build: 
+    #   context: .
+    #   dockerfile: Dockerfile
+    ports:
+      - "8080:80"
+    volumes:
+      - ./:/var/www/html
+      - ./docker/apache.conf:/etc/apache2/sites-available/000-default.conf
+    environment:
+      - APACHE_DOCUMENT_ROOT=/var/www/html
+    depends_on:
+      - db
+    networks:
+      - chat-network
+
+  db:
+    image: mysql:8.0
+    container_name: mysql-db  # 添加明确的容器名
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: chat_app
+      MYSQL_USER: phpchat
+      MYSQL_PASSWORD: phpchat
+    ports:
+      - "3306:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./docker/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - chat-network
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin:latest
+    container_name: phpmyadmin
+    restart: always
+    ports:
+      - "8081:80"               # 访问 http://localhost:8081
+    environment:
+      PMA_HOST: db              # 指向上面的 mysql 服务名
+      MYSQL_PASSWORD: rootpassword
+    depends_on:
+      - db
+    networks:
+      - chat-network
+ 
+networks:
+  chat-network:
+    driver: bridge
+
+volumes:
+  db_data:
