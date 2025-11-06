@@ -1,0 +1,67 @@
+version: '3.8'
+
+services:
+  # 原有的 web 服务，不再直接暴露端口
+  web:
+    image: darcy132/php-chat-app
+    volumes:
+      - ./:/var/www/html
+      - ./docker/apache.conf:/etc/apache2/sites-available/000-default.conf
+    environment:
+      - APACHE_DOCUMENT_ROOT=/var/www/html
+    expose:
+      - "80"  # 只暴露给内部网络，不映射到主机
+    depends_on:
+      - db
+    networks:
+      - chat-network
+
+  # 原有的 db 服务保持不变
+  db:
+    image: mysql:8.0
+    container_name: mysql-db
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: chat_app
+      MYSQL_USER: phpchat
+      MYSQL_PASSWORD: phpchat
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./docker/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - chat-network
+
+  # 原有的 phpmyadmin 服务
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin:latest
+    container_name: phpmyadmin
+    restart: always
+    environment:
+      PMA_HOST: db
+      MYSQL_PASSWORD: rootpassword
+    depends_on:
+      - db
+    networks:
+      - chat-network
+
+  # 新增：Nginx 反向代理，处理 SSL
+  nginx-proxy:
+    image: nginx:alpine
+    container_name: nginx-proxy
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./nginx/ssl:/etc/nginx/ssl
+    depends_on:
+      - web
+    networks:
+      - chat-network
+
+networks:
+  chat-network:
+    driver: bridge
+
+volumes:
+  db_data:
