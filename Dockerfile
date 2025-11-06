@@ -1,4 +1,3 @@
-# 使用官方 PHP 镜0
 FROM php:8.1-apache
 
 # 设置工作目录
